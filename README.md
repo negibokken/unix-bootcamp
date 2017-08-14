@@ -44,18 +44,29 @@
 
 ## ユーザ/グループ
 
-## .Xshrc
+## .xshrc
 
-* sh_env
-* sh
-* dotfiles
+* xshrc
+* xshenv
+* xshprofile
+* xlogin
+
+* 読み込み順序
+  * xshenv,  xprofile, xshrc, xlogin
+
+* 基本的には xshrc に設定ファイルを記述しておくと良い
 
 ## シェルスクリプト
 ### シェバン
 ### エンコーディング
 
-## 環境変数
-### 自作のプログラムをいつでも使えるように
+### 環境変数
+
+* http_proxy
+* HTTP_PROXY
+* PATH
+
+#### 自作のプログラムをいつでも使えるように
 
 * chmod
 
@@ -64,7 +75,7 @@
 * /bin
   * 必要最低限のコマンド群
 * /sbin
-  * システムあkん利用のバイナリ、ブート時に必要なもの
+  * システム管理用のバイナリ、ブート時に必要なもの
 * /dev
   * デバイスファイル（特殊ファイル）が置かれる
   * /dev/null, /dev/stdout, /dev/stdin, /dev/stderr なんかはよく使われる
@@ -94,6 +105,11 @@
 ## プロセス
 
 ## デーモン
+
+## ちょっと脱線
+### tmux
+
+### vim
 
 ## 参考文献
 
