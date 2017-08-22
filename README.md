@@ -101,6 +101,7 @@ man コマンドを参照すると良い
     * https://raw.githubusercontent.com/negibokken/unix-bootcamp/master/src/access.log.sample.gz
 * リンク先のファイルを解凍せよ
 * ログ全体・最初の15行・最後の15行を表示せよ
+    * 発展: ログの15行目から末尾15行目を除いたログを表示せよ
 * 21/Aug/2017:21:30:09 +0900 のアクセスログを見よ
 * ログの ip/host 列だけを取り出し、別のファイルに保存せよ
 * ログを集計し、一番多くアクセスしてきたホスト/IP を上位10件表示せよ
