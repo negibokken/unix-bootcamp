@@ -48,9 +48,14 @@
 
 * 今だと zsh か fish が良いと思う
 
-## 基本的なコマンドの使い方
+## コマンドを調べる時
 
-man コマンドを参照すると良い
+* man コマンドを参照すると良い
+    * セクション 1: だれもが実行できるユーザーコマンド
+    * セクション 2: システムコール(カーネルが提供する関数)
+    * セクション 3: サブルーチン(C ライブラリ関数)
+
+## 基本的なコマンドの使い方
 
 * ls
 * mkdir
@@ -223,6 +228,11 @@ puts 'hello world'
     * ルート以外のファイルシステムをマウントするために使う
 
 ## プロセス
+### プロセスID
+
+* ps
+* `puts Process.pid`
+
 ### フォアグラウンドとバックグラウンド
 
 * フォアグラウンド
@@ -238,8 +248,210 @@ puts 'hello world'
 * バックグラウンドとフォアグラウンドで実行しているジョブを表示
 
 ## ファイル
-### ファイルディスクリプタの制限
-## デーモン
+### Unix の世界ではすべてがファイル
+
+```ruby
+passwd = File.open('/etc/passwd')
+puts passwd.fileno
+```
+
+```ruby
+null = File.open('/dev/null')
+puts null.fileno
+```
+
+```
+puts STDIN.fileno
+puts STDOUT.fileno
+puts STDERR.fileno
+```
+
+### リソースの制限
+
+* ソフトリミットとハードリミットの違いはなんだろうか? ソフトリミットは本当の制 限ではない。ソフトリミット(前述の例だと 2560)を超えると例外が送出されるが、お 望みとあらばその値は変更できる。[2]
+
+```ruby
+p Process.getrlimit(:NOFILE)
+
+Process.setrlimit(:NOFILE, 4096)
+p Process.getrlimit(:NOFILE)
+
+Process.setrlimit(:NOFILE, 100)
+p Process.getrlimit(:NOFILE)
+Process.setrlimit(:NOFILE, Process.getrlimit(:NOFILE)[1])
+p Process.getrlimit(:NOFILE)
+```
+
+### 環境変数
+
+```
+ENV['MESSAGE'] = 'wing it' system "echo $MESSAGE"
+```
+
+* 本番環境、開発環境を分けたりする
+
+
+## fork
+
+* 試してみる
+
+```ruby
+if fork
+  puts "entered the if block"
+else
+  puts "entered the else block"
+end
+```
+
+* Process ID を見てみる
+
+```ruby
+puts "parents process pid is #{Process.pid}"
+if fork
+  puts "entered the if block from #{Process.pid}"
+else
+  puts "entered the else block from #{Process.pid}"
+end
+```
+
+* よいやり方
+
+```ruby
+fork do
+# 子プロセスで実行する処理をここに記述する
+end
+# 親プロセスで実行する処理をここに記述する
+```
+
+* CoW
+    * それまでの間、親プロセスと子プロセスとはメモリ上の同じデータを物理的に共有して いる。親または子のいずれかで変更する必要が生じたときだけメモリをコピーすること で、両者のプロセスの独立性を保っている[2]
+
+## プロセス
+### 孤児プロセス
+
+```ruby
+fork do
+  5.times do
+sleep 1
+    puts "I'm an orphan!"
+  end
+end
+abort "Parent process died..."
+```
+
+* 待つ
+
+```ruby
+fork do
+  5.times do
+sleep 1
+    puts "I am an orphan!"
+  end
+end
+Process.wait
+abort "Parent process died..."
+```
+
+* 待つ
+
+```ruby
+# 子プロセスを 3 つ生成する。 3.times do
+fork do
+# 各プロセス毎に 5 秒未満でランダムにスリープする。 sleep rand(5)
+end end
+3.times do
+# 子プロセスそれぞれの終了を待ち、返ってきた pid を出力する。 puts Process.wait
+end
+```
+
+* ゾンビプロセス
+
+```ruby
+# 1 秒後に終了する子プロセスを生成する。
+pid = fork { sleep 1 }
+# 終了した子プロセスの pid を出力する。
+puts pid
+# 親プロセスを sleep させる。
+# こうしておけば子プロセスのステータスを調査できる
+sleep 5
+```
+
+* ps -ho pid,state -p [ゾンビになったプロセスの pid]
+
+## シグナル
+
+* シグナルお試し
+
+```ruby
+puts Process.pid
+sleep # シグナルを送信する時間を確保するため
+```
+
+```ruby
+Process.kill(:INT, <上のコードで表示されたプロセスの番号>)
+```
+
+* シグナル改変
+
+```ruby
+puts Process.pid
+trap(:INT) { print "Na na na, you can't get me" } sleep # シグナルを送信する時間を確保するため
+#trap(:INT, "IGNORE")
+```
+
+### パイプ
+
+```ruby
+reader, writer = IO.pipe
+writer.write("Into the pipe I go...")
+writer.close
+puts reader.read
+```
+
+* 子プロセスとの通信
+
+```ruby
+reader, writer = IO.pipe
+fork do
+  reader.close
+10.times do # 力仕事
+    writer.puts "Another one bites the dust"
+  end
+end
+writer.close
+while message = reader.gets
+  $stdout.puts message
+end
+```
+
+### デーモン
+
+* オペレーティングシステムにとって特別重要なデーモンプロセスが一つある。前の章 で、すべてのプロセスは親プロセスがあることを説明した。これはあらゆるプロセスに あてはまる真実だろうか? システム上のまさに一番最初のプロセスについてはどうだろ うか。
+これは古典的な「創造主を創造したのは誰か」問題であり、答えは簡単だ。カーネルは 起動時に init プロセスと呼ばれるプロセスを生成する。このプロセスの ppid は 0 であ り、「すべてのプロセスの始祖」である。init プロセスこそ最初のプロセスであり、先祖を 持たず、その pid は 1 だ。[2]
+
+```ruby
+exit if fork
+Dir.chdir "/"
+puts Process.pid
+STDIN.reopen "/dev/null"
+STDOUT.reopen "/dev/null", "a"
+STDERR.reopen "/dev/null", "a"
+```
+
+1. プロセスを新しいセッションのセッションリーダーにする
+2. プロセスを新しいプロセスグループのプロセスグループリーダーにする
+3. プロセスから制御端末を外す
+
+* プロセスグループ確認
+
+```ruby
+puts Process.pid
+puts Process.getpgrp
+fork {
+  puts Process.pid
+  puts Process.getpgrp
+}
+```
 
 ## ちょっと脱線しておすすめ開発環境tips
 ### tmux
