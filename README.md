@@ -426,16 +426,25 @@ end
 
 ### デーモン
 
+* デーモンプロセスとは、プロセスを意図的に孤児化させたもの
+
 * オペレーティングシステムにとって特別重要なデーモンプロセスが一つある。前の章 で、すべてのプロセスは親プロセスがあることを説明した。これはあらゆるプロセスに あてはまる真実だろうか? システム上のまさに一番最初のプロセスについてはどうだろ うか。
 これは古典的な「創造主を創造したのは誰か」問題であり、答えは簡単だ。カーネルは 起動時に init プロセスと呼ばれるプロセスを生成する。このプロセスの ppid は 0 であ り、「すべてのプロセスの始祖」である。init プロセスこそ最初のプロセスであり、先祖を 持たず、その pid は 1 だ。[2]
 
 ```ruby
-exit if fork
-Dir.chdir "/"
-puts Process.pid
-STDIN.reopen "/dev/null"
-STDOUT.reopen "/dev/null", "a"
-STDERR.reopen "/dev/null", "a"
+def daemonize_app
+  if RUBY_VERSION < "1.9"
+    exit if fork    # ①
+    Process.setsid    # ②
+    exit if fork    # ③
+    Dir.chdir "/"    # ④
+    STDIN.reopen "/dev/null"    # ⑤
+    STDOUT.reopen "/dev/null", "a"    # ⑤
+    STDERR.reopen "/dev/null", "a"    # ⑤
+  else
+    Process.daemon
+  end
+end
 ```
 
 1. プロセスを新しいセッションのセッションリーダーにする
